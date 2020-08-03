@@ -1,0 +1,39 @@
+<div class="form-group">
+  <div class="col-3 col-sm-12">
+    <label class="form-label" for="<?= propname ?>"><?= proplabel ?></label>
+  </div>
+  <div class="col-9 col-sm-12">
+    <? if (proptype == 'textarea') { ?>
+      <textarea class="form-input" name="<?= propname ?>" id="<?= propname ?>"
+      <? if (required) { ?>
+        required
+      <? } ?>
+      <? if (pattern) { ?>
+        pattern="<?= pattern ?>"
+      <? } ?>
+      <? if (maxlength) { ?>
+        maxlength="<?= maxlength ?>"
+      <? } ?>
+      rows="5"><?= properties.getProperty(propname) ?></textarea>
+    <? } else if (proptype == 'switch') { ?>
+      <label class="form-switch">
+        <input type="checkbox" id="<?= propname ?>" name="<?= propname ?>" <?= properties.getProperty(propname) == 'on' ? "checked" : "" ?> >
+        <i class="form-icon"></i>
+      </label>
+    <? } else { ?>
+      <input class="form-input" type="<?= proptype ?>" name="<?= propname ?>" id="<?= propname ?>"
+      value="<?= properties.getProperty(propname) ?>" placeholder="<?= proplabel ?>"
+      <? if (required) { ?>
+        required
+      <? } ?>
+      <? if (pattern) { ?>
+        pattern="<?= pattern ?>"
+      <? } ?>
+      <? if (maxlength) { ?>
+        maxlength="<?= maxlength ?>"
+      <? } ?>
+      />
+    <? } ?>
+    <span class="form-input-hint"><?= hint ?></span>
+  </div>
+</div>

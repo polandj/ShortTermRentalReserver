@@ -1,0 +1,140 @@
+<div class="columns">
+  <div class="column col-12">
+  <div class="column col-12 text-center">
+    <h4>New Reservation</h4>
+  </div>
+
+  <? if (properties.getProperty('master_switch') != 'on') { ?>
+    <div class="column col-8 col-md-10 col-sm-12 col-mx-auto">
+      <div class="toast">Production mode off.  Most actions will not occur.</div>
+    </div>
+  <? } ?>
+  
+  <div class="column col-8 col-md-10 col-sm-12 col-mx-auto">
+  <style type="text/css">:root{--scolor: #71C2F7;}.grupzring{display: inline-block; width: 200px; height: 200px; position: absolute; margin: auto; top: 0; right: 0; bottom: 0; left: 0;}.grupzring div{box-sizing: border-box; display: block; width: 200px; height: 200px; position: absolute; margin: auto; top: 0; right: 0; bottom: 0; left: 0; margin: 0px; border: 6px solid var(--scolor); border-radius: 50%; animation: grupzring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite; border-color: var(--scolor) transparent transparent transparent;}.grupzring div:nth-child(1){animation-delay: -0.45s;}.grupzring div:nth-child(2){animation-delay: -0.3s;}.grupzring div:nth-child(3){animation-delay: -0.15s;}@keyframes grupzring{0%{transform: rotate(0deg);}100%{transform: rotate(360deg);}}</style>
+  <div id="gcalspin3" class="grupzring"><div></div><div></div><div></div><div></div></div>
+  <iframe src="https://grupz.com/avail-calendar-trio/1596108142371x681951421451993100" style='border:none;' scrolling='no' width="100%" height='278' align='center' onload="document.getElementById('gcalspin3').style.display='none'"></iframe>
+  </div>
+  
+  <form class="column col-8 col-md-10 col-sm-12 col-mx-auto form-horizontal" onsubmit="handleReservationSubmit(this)">
+    <?!= input_field('name', 'Name', 'text', {required:true}) ?>
+    <?!= input_field('phone', 'Phone', 'tel', {required:true, pattern: "^\\+1[0-9]{10}$"}) ?>
+    <?!= input_field('email', 'Email', 'email', {required:true}) ?>
+    
+    <div class="form-group">
+      <div class="col-3 col-sm-12">
+        <label class="form-label" for="mail_from">Guests</label>
+      </div>
+      <div class="col-4 col-sm-12">
+        <div class="input-group">
+          <select class="form-select" id="adults" name="adults">
+            <? for (var i = 2; i < 7; i++) { ?>
+              <option value="<?= i ?>"><?= i ?></option>
+            <? } ?>
+          </select>
+          <span class="input-group-addon">Adults</span>
+        </div>
+      </div>
+      <div class="col-1 divider-vert" data-content="AND"></div>
+      <div class="col-4 col-sm-12">
+        <div class="input-group">
+          <select class="form-select" id="kids" name="kids">
+            <? for (var i = 0; i < 5; i++) { ?>
+              <option value="<?= i ?>"><?= i ?></option>
+            <? } ?>
+          </select>
+          <span class="input-group-addon">Kids</span>
+        </div>
+      </div>
+    </div>
+    
+    <?!= input_field('checkin', 'Check-In', 'date', {required:true}) ?>
+    <?!= input_field('checkout', 'Check-Out', 'date', {required:true}) ?>
+
+    <?!= include('submit_form') ?>
+  </form>
+  
+  </div>
+</div>
+
+<div class="modal" id="quote-modal">
+    <a class="modal-overlay" aria-label="Close"></a>
+    <div class="modal-container">
+      <div class="modal-header">
+        <a class="btn btn-clear float-right" aria-label="Close"></a>
+        <div class="modal-title h5">Rental Quote</div>
+      </div>
+      <div class="modal-body">
+        <div class="content">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Rent (<span id="modal_nights">XXX</span> nights)</td>
+                <td>$<span id="modal_rent">$$$</span></td>
+              </tr>
+              <tr class="text-small text-muted">
+                <td>Customer Discount</td>
+                <td>($<span id="modal_discount">$$$</span>)</td>
+              </tr>
+              <tr class="text-small text-muted">
+                <td style="padding-left: 5%">MI Use Tax</td>
+                <td>$<span id="modal_tax">$$$</span></td>
+              </tr>
+              <tr class="text-small text-muted">
+                <td>Cleaning Fee</td>
+                <td>$<span id="modal_cleaning">$$$</span></td>
+              </tr>
+              <tr class="active text-large">
+                <td>Total</td>
+                <td>$<span id="modal_total_sum">$$$</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="mt-1 float-left">
+          <span id="modal_checkin">mm/dd/yyyy</span>
+          -
+          <span id="modal_checkout">mm/dd/yyyy</span>
+        </span>
+        <button class="btn btn-primary" onclick="handleBooking(this)">Book for $<span id="modal_total_act">$$$</span></button>      
+      </div>
+    </div>
+  </div>
+  
+  <div class="modal" id="invoice-modal">
+    <a class="modal-overlay" aria-label="Close"></a>
+    <div class="modal-container">
+      <div class="modal-body">
+        <div class="content empty">
+          <i class="icon icon-upload icon-2x"></i>
+          <p class="empty-title h5">Click <a id="invoice-link" href="" target=_blank>here</a> to pay!</p>
+          <p class="empty-title h5">Waiting for payment...</p>
+          <div class="loading loading-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="modal" id="thanks-modal">
+    <a class="modal-overlay" aria-label="Close"></a>
+    <div class="modal-container">
+      <div class="modal-body">
+        <div class="content empty">
+          <i class="icon icon-check icon-2x"></i>
+          <p class="empty-title h5">Thank you, your booking is complete!</p>
+          <p class="empty-title h7">We'll contact you soon to digitally sign the <a href="">rental agreement</a></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeModal('thanks-modal')">Done</button>      
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,152 @@
+<script>
+  var lastResult
+  // Prevent forms from submitting.
+  function preventFormSubmit() {
+    var forms = document.querySelectorAll('form')
+    for (var i = 0; i < forms.length; i++) {
+      forms[i].addEventListener('submit', function(event) {
+        event.preventDefault()
+      });
+    }
+  }
+  window.addEventListener('load', preventFormSubmit)
+
+  function handleFormSubmit(formObject) {
+    var div = document.getElementById('output')
+    div.innerHTML = "Saving..."
+    // Special handling for checkboxes to always send on or off
+    var inputs = document.querySelectorAll("input[type='checkbox']")
+    for(var i = 0; i < inputs.length; i++) {
+      // Remove any previously hidden inputs with the same name
+      var hiddens = document.querySelectorAll(`input[type='hidden'][name='${inputs[i].name}']`)
+      for(var j = 0; j < hiddens.length; j++) {
+        formObject.removeChild(hiddens[j])
+      }
+      if (!inputs[i].checked) {
+        // Add a hidden input if the box is not checked
+        var input = document.createElement("input")
+        input.setAttribute("type", "hidden")
+        input.setAttribute("name", inputs[i].name)
+        input.setAttribute("value", 'off')
+        console.log(`${inputs[i].name} - ${inputs[i].checked}`)
+        formObject.appendChild(input)
+      } 
+    }
+    google.script.run.withSuccessHandler(handleResult).saveSettings(formObject)
+  }
+  
+  function handleReservationSubmit(formObject) {
+    var div = document.getElementById('output')
+    div.innerHTML = "Checking..."
+    google.script.run.withSuccessHandler(handleQuoteResult).quoteReservation(formObject)
+  }
+  
+  function handleQuoteResult(result) {
+    if (result.status != "quoted") {
+      var div = document.getElementById('output')
+      div.innerHTML = result.error
+    } else {
+      lastResult = result // Save for if they continue booking
+      var nights = document.getElementById("modal_nights")
+      nights.innerHTML = Number(result.quote.nights).toFixed(0)
+      var rent = document.getElementById("modal_rent")
+      rent.innerHTML = Number(result.quote.rent).toFixed(2)
+      var tax = document.getElementById("modal_tax")
+      tax.innerHTML = Number(result.quote.tax).toFixed(2)
+      var cleaning = document.getElementById("modal_cleaning")
+      cleaning.innerHTML = Number(result.quote.cleaning_fee).toFixed(2)
+      var discount = document.getElementById("modal_discount")
+      discount.innerHTML = Number(result.quote.customer_discount).toFixed(2)
+      var check_in = document.getElementById("modal_checkin")
+      check_in.innerHTML = result.input.checkin
+      var check_out = document.getElementById("modal_checkout")
+      check_out.innerHTML = result.input.checkout
+      var total_sum = document.getElementById("modal_total_sum")
+      total_sum.innerHTML = Number(result.quote.total).toFixed(2)
+      var total_act = document.getElementById("modal_total_act")
+      total_act.innerHTML = Number(result.quote.total).toFixed(2)
+      openModal('quote-modal')
+    }
+  }
+  
+  function handleBooking(btn) {
+    btn.classList.add("loading")
+    // Create invoice if we already have customer
+    if (Object.keys(lastResult.quote.customer).length !== 0) {
+      lastResult.customer = lastResult.quote.customer
+      google.script.run.withSuccessHandler(handleInvoiceCreated).createInvoice(lastResult)
+    } else {
+      // Create customer
+      google.script.run.withSuccessHandler(handleCustomerCreated).createCustomer(lastResult)
+    }
+  }
+  
+  function handleCustomerCreated(result) {
+    console.info(result)
+    
+    // Create Invoice for customer
+    google.script.run.withSuccessHandler(handleInvoiceCreated).createInvoice(result)
+  }
+  
+  function handleInvoiceCreated(result) {
+    console.info(result)
+    // Hide first modal
+    closeModal('quote-modal')
+    
+    // Show new waiting modal
+    document.getElementById("invoice-link").href = result.invoice.viewUrl
+    openModal('invoice-modal')
+    
+    // Wait for invoice status to be paid
+    setTimeout(function(){ 
+      google.script.run.withSuccessHandler(handleInvoicePaid).isInvoicePaid(result)
+    }, 5000)
+  }
+  
+  function handleInvoicePaid(result) {
+    if (result.isPaid) {
+      // Save to Calendar
+      
+      // Show Thank you modal
+      openModal('thanks-modal')
+    } else {
+      setTimeout(function(){ 
+        google.script.run.withSuccessHandler(handleInvoicePaid).isInvoicePaid(result)
+      }, 5000)
+    }
+  }
+  
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active')
+  }
+  
+  function openModal(id) {
+    document.getElementById(id).classList.add('active')
+  }
+  
+  function loadPage(page) {
+    console.log(`Load page ${page}`)
+    var container = document.getElementById('container')
+    container.innerHTML = '<div class="loading loading-lg">Loading...</div>'
+    google.script.run.withSuccessHandler(htmlFragment => {
+      container.innerHTML = htmlFragment
+      preventFormSubmit()
+    }).getHtml(page)
+  }
+  
+  function handleResult(result) {
+    var div = document.getElementById('output')
+    if (result.status == 'error') {
+      div.innerHTML = `Error - ${result.reason}`
+    } else {
+      div.innerHTML = result.status
+    }
+    // Remove msg after short period
+    setTimeout(function(){ 
+      div.innerHTML = ""
+    }, 3000)
+  }
+</script>
+
+
+
