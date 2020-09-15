@@ -1,10 +1,11 @@
-// Public Wave API URL - SHouldn't need to change
+// Public Wave API URL - Shouldn't need to change
 var WAVE_API_URL = "https://gql.waveapps.com/graphql/public"
 
 // URL to google sheet with three sheets inside: quotes, bookings, settings
+var SHEETS_URL = "https://docs.google.com/spreadsheets/d/1QPuZbKhE-P-gLfCJOYqsFGe_AvOji2v8oqKeu0MOqS8/edit"
 // The settings sheet should have two columns, representing key-value pairs with the following keys:
 // BIZ_ID, RENT_ID, CLEANER_FEE_ID, CUSTOMER_DISCOUNT_ID, API_TOKEN, CLEANING_FEE, NIGHTLY_RATE, CUSTOMER_DISCOUNT
-var SHEETS_URL = "https://docs.google.com/spreadsheets/d/1QPuZbKhE-P-gLfCJOYqsFGe_AvOji2v8oqKeu0MOqS8/edit"
+// CHECKIN_TIME, CHECKOUT_TIME, MAIL_FROM, PROPERTY_NAME, WELCOME_GUIDE_URL, RENTAL_AGREEMENT_URL, EMAIL_SIGNATURE
 
 var settings = getSheetSettings()
 
@@ -61,25 +62,6 @@ function getWaveCustomer(email) {
   return {}
 }
 
- /*
-  query ($businessId: ID!, $customerId: ID!) {
-  business(id: $businessId) {
-    invoices(customerId: $customerId, status: PAID) {
-      edges {
-        node {
-          id,
-          status
-        }
-      }
-    }
-  }
-}
-
-{
-    "businessId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5",
-    "customerId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5O0N1c3RvbWVyOjQyMTk1NzIx"
-  }
-  */
 function getWaveCustomerPaidInvoiceCount(customer) {
   const query = `query ($businessId: ID!, $customerId: ID!) {
     business(id: $businessId) {
@@ -94,29 +76,6 @@ function getWaveCustomerPaidInvoiceCount(customer) {
   return response.data.business.invoices.edges.length
 }
 
-/*
-  mutation ($input: CustomerCreateInput!) {
-  customerCreate(input: $input) {
-    didSucceed
-    inputErrors {
-      message
-      code
-      path
-    }
-    customer {
-      id
-    }
-  }
-}
-
-{
-  "input": {
-    "businessId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5",
-    "name": "Sample Customer",
-    "email": "foo@bar.com"
-  }
-}
-*/
 function createWaveCustomer(customerData) {
   const query = `mutation ($input: CustomerCreateInput!) {
     customerCreate(input: $input) {
@@ -136,39 +95,6 @@ function createWaveCustomer(customerData) {
   return response.data.customerCreate.customer
 }
 
-/* mutation ($input: InvoiceCreateInput!) {
-  invoiceCreate(input: $input) {
-    didSucceed
-    invoice {
-      id
-      viewUrl
-      status
-      title
-      total {
-        value
-      }
-    }
-  }
-}*/
-  /*
-  {
-  "input": {
-    "businessId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5",
-    "customerId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5O0N1c3RvbWVyOjQyMTk1NzIx",
-    "items": [
-      {
-        "productId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5O1Byb2R1Y3Q6MzcwODM4ODg=",
-        "unitPrice": "3500",
-        "description": "Aug 3 - 10, 2020"
-      },
-      {
-        "productId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5O1Byb2R1Y3Q6MzcwODM4ODk=",
-        "unitPrice": "250"
-      }
-    ],
-    "status":"SAVED"
-    }
-  }*/
 function createWaveInvoice(input, quote, customer) {
   const query = `mutation ($input: InvoiceCreateInput!) {
     invoiceCreate(input: $input) {
@@ -176,6 +102,7 @@ function createWaveInvoice(input, quote, customer) {
       invoice {
         id
         viewUrl
+        pdfUrl
         status
         title
         total {
@@ -205,21 +132,6 @@ function createWaveInvoice(input, quote, customer) {
   return response.data.invoiceCreate.invoice
 }
 
-
-// https://developer.waveapps.com/hc/en-us/articles/360019968212-API-Reference#invoicemarksentinput 
-  /*
-  mutation ($input: InvoiceMarkSentInput!) {
-  invoiceMarkSent(input: $input) {
-    didSucceed
-  }
-}
-{
-  "input": {
-    "invoiceId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5O0ludm9pY2U6OTkyMzM3NzAyNTcxNjAxOTk0",
-    "sendMethod": "SHARED_LINK"
-  }
-}
-*/
 function markWaveInvoiceSent(invoice) {
   const query = `mutation ($input: InvoiceMarkSentInput!) {
     invoiceMarkSent(input: $input) {
@@ -235,18 +147,6 @@ function markWaveInvoiceSent(invoice) {
   return response.data.invoiceMarkSent.didSucceed
 }
 
-/*
- query ($businessId: ID!, $invoiceId: ID!) {
-  business(id: $businessId) {
-    invoice(id: $invoiceId) {
-      id,
-      status
-    }
-  }
-}
-{"businessId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5",
-"invoiceId": "QnVzaW5lc3M6NjBmNGY0YmMtN2RjMC00YTIzLTk4ZjktZGEwN2JlMjQ1NDU5O0ludm9pY2U6OTkyMzM3NzAyNTcxNjAxOTk0"}
-*/
 function waveInvoiceIsPaid(invoice) {
   const query = `query ($businessId: ID!, $invoiceId: ID!) {
     business(id: $businessId) {
@@ -260,7 +160,7 @@ function waveInvoiceIsPaid(invoice) {
     "invoiceId": invoice.id
   }
   var response = callWaveApi(query, variables)    
-  return response.data.business.invoice.status === "PAID"
+  return response.data.business.invoice.status === "VIEWED" // XXX - PAID
 }
 
 function addSheetQuote(quote) {
@@ -277,7 +177,7 @@ function addSheetBooking(booking) {
   var sheet = ss.getSheetByName('bookings')
   sheet.appendRow([booking.input.name, booking.input.email, booking.input.phone, booking.input.adults, 
                    booking.input.kids, booking.input.checkin, booking.input.checkout, booking.quote.nights,
-                   booking.quote.rent, booking.quote.customer_discount, booking.qoute.tax, booking.quote.cleaning_fee,
+                   booking.quote.rent, booking.quote.customer_discount, booking.quote.tax, booking.quote.cleaning_fee,
                    booking.quote.total, new Date(), booking.invoice])
                    
 }
@@ -295,3 +195,22 @@ function getSheetSettings() {
   return ret
 }
   
+function send_email(to, subject, txt, htm) {
+  var retval = false
+  if (!to) {
+    console.warn(`send_email called with empty TO`)
+    return retval
+  }
+  var options = {}
+  if (settings.MAIL_FROM) {
+    options.from = settings.MAIL_FROM
+  }
+  if (htm) {
+    options.htmlBody = htm
+  }
+  GmailApp.sendEmail(to, subject, txt, options)
+  console.info(`Sent mail to ${to}: ${subject}`)
+  retval = true
+  
+  return retval
+}

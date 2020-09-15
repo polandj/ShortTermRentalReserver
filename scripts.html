@@ -106,14 +106,26 @@
   function handleInvoicePaid(result) {
     if (result.isPaid) {
       // Save to Calendar
-      
-      // Show Thank you modal
-      openModal('thanks-modal')
+      google.script.run.withSuccessHandler(handleCalendarAdd).addReservationToCalendar(result)
     } else {
       setTimeout(function(){ 
         google.script.run.withSuccessHandler(handleInvoicePaid).isInvoicePaid(result)
       }, 5000)
     }
+  }
+  
+  function handleCalendarAdd(result) {
+    // Send thank you email
+    google.script.run.withSuccessHandler(handleEmailSent).sendReservationEmail(result)
+    // Show Thank you modal
+    closeModal('invoice-modal')
+    openModal('thanks-modal')
+    var div = document.getElementById('output')
+    div.innerHTML = "Booked!"
+  }
+  
+  function handleEmailSent(result) {
+    console.log(`Thank you email sent to ${result.input.name}`)
   }
   
   function closeModal(id) {

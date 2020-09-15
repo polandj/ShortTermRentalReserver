@@ -1,0 +1,24 @@
+<?= result.input.name ?>,
+
+Thank you for your reservation at <?= settings.PROPERTY_NAME ?>!  Here's the summary of your reservation:
+
+Guests: <?= result.input.adults ?> adults, <?= result.input.kids ?> kids
+Phone: <?= result.input.phone ?>
+
+Check-In: <?= result.input.checkin ?>
+
+Check-Out: <?= result.input.checkout ?>
+
+
+Your completed invoice: <?= result.invoice.pdfUrl ?>
+
+Welcome guide: <?= settings.WELCOME_GUIDE_URL ?>
+
+Rental Agreement: <?= settings.RENTAL_AGREEMENT_URL ?>
+
+
+We will be emailing you soon to digitally sign the rental agreement.
+
+Thanks
+
+<?= settings.EMAIL_SIGNATURE ?>

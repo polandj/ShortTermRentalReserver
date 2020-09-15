@@ -46,7 +46,7 @@ function doGet(e) {
   return templ.evaluate().setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
 }
 
-/* Called from index.html and  to save a reservation */
+/* Called from index.html and quote a reservation */
 function quoteReservation(formObject) {
   var name = formObject.name.trim()
   var email = formObject.email.trim()
@@ -63,14 +63,15 @@ function quoteReservation(formObject) {
     return {status: "error", reason: "Invalid phone"}
   }
   phone = "+1" + phone.replace(/\D/g, '').slice(-10)
+  
+  var settings = getSheetSettings()
   var start_date = new Date(checkin + "T00:00:00")
   var stop_date = new Date(checkout + "T00:00:00")
   var now = new Date()
   if (now > start_date || now > stop_date || start_date >= stop_date) {
     return {status: "error", reason: "Invalid dates"}
   }
-  var properties = PropertiesService.getUserProperties()
-  checkin_time = properties.getProperty('checkin_time')
+  checkin_time = settings.CHECKIN_TIME
   if (checkin_time) {
     var checkin_parts = checkin_time.split(':')
     start_date.setHours(parseInt(checkin_parts[0]))
@@ -78,7 +79,7 @@ function quoteReservation(formObject) {
   } else {
     start_date.setHours(16) // Default: 4pm
   }
-  checkout_time = properties.getProperty('checkout_time')
+  checkout_time = settings.CHECKOUT_TIME
   if (checkout_time) {
     var checkout_parts = checkout_time.split(':')
     stop_date.setHours(parseInt(checkout_parts[0]))
@@ -94,25 +95,6 @@ function quoteReservation(formObject) {
   }
   
   // Create quote
-  var descr = `Guests: ${adults} adults, ${kids} kids\r\nPhone: ${phone}`
-  var properties = PropertiesService.getUserProperties()
-  var event
-  if (properties.getProperty('master_switch') == 'on' || 
-      properties.getProperty('admin_phone') == phone) {
-    var defcal = CalendarApp.getDefaultCalendar()
-    event = defcal.createEvent(name, start_date, stop_date, 
-                               {description: descr})
-    var mins_til_start = (start_date.getTime() - now.getTime())/1000/60
-    event.addEmailReminder(Math.min(mins_til_start - 10, 10080)) // 1 week or a few minutes from now
-    console.info("Created " + name + " calendar event: " + checkin + " - " + checkout)
-    // Creating the event doesn't trigger a calendar updated trigger?!...Do it manually
-    var cal = {calendarId: defcal.getId()}
-    calendarUpdated(cal)
-  } else {
-    console.info("[TESTING] Skipped quoting " + name + " event: " + checkin + " - " + checkout)
-  }
-  
-  var settings = getSheetSettings()
   var input = {}
   input.name = name
   input.email = email
@@ -136,6 +118,7 @@ function quoteReservation(formObject) {
   
   var ret = {status: "quoted", quote: quote, input: input}
   
+  // Save all quotes to a sheet
   addSheetQuote(ret)
   return ret
 }
@@ -156,6 +139,7 @@ function createInvoice(result) {
   if (!markWaveInvoiceSent(invoice)) {
     console.log("Error marking invoice as sent")
   }
+  // Save all bookings to a sheet
   addSheetBooking(result)
   
   result.invoice = invoice
@@ -166,6 +150,59 @@ function isInvoicePaid(result) {
   console.info(`Checking if invoice is paid`)
   result.isPaid = waveInvoiceIsPaid(result.invoice)
   return result
+}
+
+function addReservationToCalendar(result) {
+  var settings = getSheetSettings()
+  var start_date = new Date(result.input.checkin + "T00:00:00")
+  var stop_date = new Date(result.input.checkout + "T00:00:00")
+  var now = new Date()
+  if (now > start_date || now > stop_date || start_date >= stop_date) {
+    return {status: "error", reason: "Invalid dates"}
+  }
+  checkin_time = settings.CHECKIN_TIME
+  if (checkin_time) {
+    var checkin_parts = checkin_time.split(':')
+    start_date.setHours(parseInt(checkin_parts[0]))
+    start_date.setMinutes(parseInt(checkin_parts[1]))
+  } else {
+    start_date.setHours(16) // Default: 4pm
+  }
+  checkout_time = settings.CHECKOUT_TIME
+  if (checkout_time) {
+    var checkout_parts = checkout_time.split(':')
+    stop_date.setHours(parseInt(checkout_parts[0]))
+    stop_date.setMinutes(parseInt(checkout_parts[1]))
+  } else {
+    stop_date.setHours(11) // Default: 11am
+  }
+  
+  // Check for conflicting reservations
+  var events = CalendarApp.getDefaultCalendar().getEvents(start_date, stop_date)
+  if (events && events.length > 0) {
+    return {status: "error", reason: "Conflict with other reservation"}
+  }
+  
+  // Create Calendar entry
+  var descr = `Guests: ${result.input.adults} adults, ${result.input.kids} kids\r\nPhone: ${result.input.phone}\r\n`
+  var defcal = CalendarApp.getDefaultCalendar()
+  event = defcal.createEvent(name, start_date, stop_date, 
+                             {description: descr})
+  var mins_til_start = (start_date.getTime() - now.getTime())/1000/60
+  event.addEmailReminder(Math.min(mins_til_start - 10, 10080)) // 1 week or a few minutes from now
+  result.event = event
+  console.info(`Created ${result.input.name} calendar event: {$result.input.checkin} - ${result.input.checkout}`)
+  return result
+}
+
+function sendReservationEmail(result) {
+  var tmpl = HtmlService.createTemplateFromFile('thanks-email')
+  tmpl.result = result
+  tmpl.settings = getSheetSettings()
+  var body = tmpl.evaluate()
+  var content = body.getAs("text/plain").getDataAsString() 
+  var htmlcontent = "<!DOCTYPE html><html><body>" + content.replace(/\n/g, '<br>') + "</body></html>"
+  send_email(result.input.email, "Your OUBM Reservation in South Haven, MI", content, htmlcontent)
 }
 
 /*
